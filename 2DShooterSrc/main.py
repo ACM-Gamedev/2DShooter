@@ -31,8 +31,8 @@ all_game_objects.append(player)
 player_accel = 500.0
 player_friction = 0.95
 
-player_boost_interval = 0.05
-player_boost_timer = 0.0
+player_thrust_interval = 0.05
+player_thrust_timer = 0.0
 
 # MAKE BACKGROUND
 background_img = pygame.Surface(screen_size).convert()
@@ -210,7 +210,7 @@ while not quit_game:
 
     # Create particle effects for "engine boost".
     if player.acceleration.sq_magnitude() > 1:
-        if player_boost_timer >= player_boost_interval:
+        if player_thrust_timer >= player_thrust_interval:
 
             # The opposite direction of the player's acceleration
             direction = (player.acceleration * -1.0).direction()
@@ -220,9 +220,9 @@ while not quit_game:
             create_particle_effect(player.position, 5, (0, 255, 255), direction_range, (0.2, 1.0))
 
             # Reset timer to create the next particle effect.
-            player_boost_timer = 0.0
+            player_thrust_timer = 0.0
 
-        player_boost_timer += delta_time
+        player_thrust_timer += delta_time
 
     # Move the enemy in a circle.
     enemy.velocity.set_direction(enemy_dir)
