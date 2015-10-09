@@ -91,7 +91,7 @@ def handle_player_input(event):
         dirToMouse = Vector2.get_normal(mousePos - player.position)
 
         # Create a bullet
-        bullet = GameObject()
+        bullet = Particle()
         bullet.tag = "player bullet"
 
         bullet.position.x = player.position.x
@@ -106,8 +106,7 @@ def handle_player_input(event):
 def create_particle_effect(emit_pos, amount, color, dir_range=(0.0, 2.0 * pi), life_range=(1.0, 5.0)):
     for p in range(0, amount):
 
-        particle = GameObject()
-        particle.tag = "particle"
+        particle = Particle()
         particle.position.x = emit_pos.x
         particle.position.y = emit_pos.y
 
@@ -170,10 +169,18 @@ while not quit_game:
                 create_particle_effect(player.position, 15, (0, 255, 150))
                 del all_game_objects[i]
 
+            # Destroy bullet if its life ran out.
+            elif game_object.lifeTimer < 0:
+                del all_game_objects[i]
+
         # Player hits enemy - create particles - remove bullet
         elif game_object.tag == "player bullet":
             if game_object.boundingBox.colliderect(enemy.boundingBox):
                 create_particle_effect(enemy.position, 15, (255, 255, 0))
+                del all_game_objects[i]
+
+            # Destroy bullet if its life ran out.
+            elif game_object.lifeTimer < 0:
                 del all_game_objects[i]
 
         # Darken the particle color as time goes on.
@@ -204,9 +211,9 @@ while not quit_game:
             # update game object color to the new color.
             game_object.color = (color.r, color.g, color.b)
 
-        # Kill object if its life timer ran out.
-        if game_object.killByTimer and game_object.lifeTimer < 0:
-            del all_game_objects[i]
+            # Kill particle if its life timer ran out.
+            if game_object.lifeTimer < 0:
+                del all_game_objects[i]
 
     # Create particle effects for "engine thrust".
     if player.acceleration.sq_magnitude() > 1:

@@ -17,12 +17,6 @@ class GameObject(object):
 
         self.tag = "gameobject"
 
-        # Game object is alive forever unless explicitly told.
-        # Use set_life() instead. Don't modify directly.
-        self.killByTimer = False
-        self.lifeTimer = 0.0
-        self.lifeStart = 0.0
-
     # Update the game object at every delta_time interval.
     def update(self, delta_time):
 
@@ -42,16 +36,9 @@ class GameObject(object):
         # Center the bounding box around the position vector.
         self.boundingBox.topleft = (self.position.x - w/2, self.position.y - h/2)
 
-        if self.killByTimer:
-            self.lifeTimer -= delta_time
-
     # Render to screen.
     def render(self, screen):
         draw.rect(screen, self.color, self.boundingBox)
-
-    def set_life(self, value):
-        self.lifeTimer = self.lifeStart = value
-        self.killByTimer = True
 
 
 class EnemyGameObject(GameObject):
@@ -97,3 +84,24 @@ class EnemyGameObject(GameObject):
             if self.firing_timer >= self.fire_interval:
                 self.shoot()
                 self.firing_timer = 0.0
+
+
+class Particle(GameObject):
+
+    def __init__(self):
+        super(Particle, self).__init__()
+
+        # Life span of the particle.
+        # Use set_life() instead. Don't modify directly.
+        self.lifeTimer = 0.0
+        self.lifeStart = 0.0
+
+        self.tag = "particle"
+
+    def set_life(self, value):
+        self.lifeTimer = self.lifeStart = value
+
+    def update(self, delta_time):
+        super(Particle, self).update(delta_time)
+
+        self.lifeTimer -= delta_time
