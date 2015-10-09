@@ -208,7 +208,7 @@ while not quit_game:
         if game_object.killByTimer and game_object.lifeTimer < 0:
             del all_game_objects[i]
 
-    # Create particle effects for "engine boost".
+    # Create particle effects for "engine thrust".
     if player.acceleration.sq_magnitude() > 1:
         if player_thrust_timer >= player_thrust_interval:
 
