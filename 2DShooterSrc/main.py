@@ -216,7 +216,7 @@ while not quit_game:
             direction = (player.acceleration * -1.0).direction()
 
             # Create particles between these two angles.
-            direction_range = (direction - pi/6.0, direction + pi/6.0)
+            direction_range = (direction - pi/8.0, direction + pi/8.0)
             create_particle_effect(player.position, 5, (0, 255, 255), direction_range, (0.2, 1.0))
 
             # Reset timer to create the next particle effect.

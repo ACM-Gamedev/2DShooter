@@ -81,7 +81,7 @@ class Vector2:
     # Uses the angle between i-unit vector and x-y vector component
     def direction(self):
         r = acos(self.x / self.magnitude())
-        if self.y > 0:
+        if self.y < 0:
             r *= -1
         return r
 
