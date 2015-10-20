@@ -4,12 +4,16 @@ import pygame
 import sys
 from GameObject import *
 from Vector2 import Vector2
+from Camera import *
 from random import randrange, uniform
-from pygame import gfxdraw
+from pygame import gfxdraw, mixer
 from math import pi
+
+mixer.pre_init(22050, -16, 40, 4096/4)
 
 # Initialize any modules that pygame uses.
 pygame.init()
+mixer.init()
 
 screen_size = (1200, 700)
 
@@ -17,7 +21,17 @@ screen_size = (1200, 700)
 bpp = 32
 screen = pygame.display.set_mode(screen_size, pygame.HWSURFACE, bpp)
 
+laser_shot_sfx = mixer.Sound("../Assets/laser_shot.wav")
+enemy_laser_sfx = mixer.Sound("../Assets/laser_shot_2.wav")
+hit_sfx = mixer.Sound("../Assets/hit.wav")
+
+laser_shot_sfx.set_volume(0.1)
+hit_sfx.set_volume(0.4)
+enemy_laser_sfx.set_volume(0.5)
+
 all_game_objects = list()
+
+########################################################################################
 
 # MAKE THE PLAYER
 player = GameObject()
@@ -33,23 +47,69 @@ player_friction = 0.95
 
 player_thrust_interval = 0.05
 player_thrust_timer = 0.0
+player_firing_interval = 0.1
+player_firing_timer = 0.0
+
+# Create enemy.
+enemy = EnemyGameObject(all_game_objects)
+enemy.position = Vector2(500, 50)
+enemy.velocity = Vector2(200, 0)
+enemy.fire_interval = 0.1
+enemy.firing_speed = 900.0
+enemy.boundingBox = Rect(enemy.position.to_tuple(), (10, 10))
+enemy.color = (255, 100, 0)
+enemy.target = player
+enemy.fire_sfx = enemy_laser_sfx
+enemy_dir = 0.0
+all_game_objects.append(enemy)
+
+# MAKE CAMERA #################################################################################
+camera = Camera(Rect((0, 0), screen_size))
+camera.target = player
+
+############################################################################################
 
 # MAKE BACKGROUND
-background_img = pygame.Surface(screen_size).convert()
-background_img.fill((0, 0, 0))
-# fill with stars
-numStars = 500
-for i in range(0, numStars):
-    color = (randrange(50, 255), randrange(50, 255), randrange(50, 255))
-    x = randrange(0, screen_size[0])
-    y = randrange(0, screen_size[1])
-    gfxdraw.pixel(background_img, x, y, color)
+backgrounds = list()
+numBackgrounds = 5
+horizon_line = screen_size[1] - 100
+ground_color = (210, 180, 140)
+
+for background in range(0, numBackgrounds):
+
+    background_img = pygame.Surface(screen_size).convert()
+    background_img.fill((0, 0, 0))
+    backgrounds.append(background_img)
+
+    # fill with stars
+    numStars = 500
+    for i in range(0, numStars):
+        color = (randrange(50, 255), randrange(50, 255), randrange(50, 255))
+        x = randrange(0, screen_size[0])
+        y = randrange(0, horizon_line)
+        gfxdraw.pixel(background_img, x, y, color)
+
+    # Create the horizon line
+    for i in range(0, screen_size[0]):
+        gfxdraw.pixel(background_img, i, horizon_line, ground_color)
+
+    # Place buildings
+    numBuildings = 10
+    for i in range(0, numBuildings):
+        gray_shade = randrange(40, 200)
+        building_color = (gray_shade, gray_shade, gray_shade)
+
+        # Dimensions of the building - width and height.
+        building_dims = (randrange(20, 50), randrange(10, 150))
+
+        # Position of the building
+        building_pos = (randrange(0, screen_size[0]), horizon_line - building_dims[1])
+
+        pygame.draw.rect(background_img, building_color, Rect(building_pos, building_dims))
 
 
-def control_player_motion(dt):
-
-    # Move player based on key states (able to detect multiple keys at once).
-    keys = pygame.key.get_pressed()
+# Move player based on key states (able to detect multiple keys at once).
+def control_player_motion(keys, dt):
 
     # Acceleration on the X axis.
     if keys[pygame.K_a]:
@@ -82,25 +142,30 @@ def control_player_motion(dt):
 
 def handle_player_input(event):
 
-    # Make the player shoot towards to mouse.
     if event.type == pygame.MOUSEBUTTONDOWN:
+        pass
 
-        # Direction to mouse
-        mouseX, mouseY = pygame.mouse.get_pos()
-        mousePos = Vector2(mouseX, mouseY)
-        dirToMouse = Vector2.get_normal(mousePos - player.position)
 
-        # Create a bullet
-        bullet = Particle()
-        bullet.tag = "player bullet"
+def fire_bullet():
+    # Direction to mouse
+    mouseX, mouseY = pygame.mouse.get_pos()
+    mousePos = Vector2(mouseX + camera.boundingBox.x, mouseY+camera.boundingBox.y)
+    dirToMouse = Vector2.get_normal(mousePos - player.position)
 
-        bullet.position.x = player.position.x
-        bullet.position.y = player.position.y
-        bullet.velocity = dirToMouse * 600.0
-        bullet.boundingBox = Rect(player.position.to_tuple(), (5, 5))
-        bullet.color = (255, 150, 255)
-        bullet.set_life(1.3)
-        all_game_objects.append(bullet)
+    # Create a bullet
+    bullet = Particle()
+    bullet.tag = "player bullet"
+
+    bullet.position.x = player.position.x
+    bullet.position.y = player.position.y
+    bullet.velocity = dirToMouse * 800.0
+    bullet.boundingBox = Rect(player.position.to_tuple(), (5, 5))
+    bullet.color = (255, 150, 255)
+    bullet.set_life(1.3)
+    all_game_objects.append(bullet)
+
+    channel = mixer.find_channel(True)
+    channel.queue(laser_shot_sfx)
 
 
 def create_particle_effect(emit_pos, amount, color, dir_range=(0.0, 2.0 * pi), life_range=(1.0, 5.0)):
@@ -122,20 +187,10 @@ def create_particle_effect(emit_pos, amount, color, dir_range=(0.0, 2.0 * pi), l
         particle.set_life(uniform(life_range[0], life_range[1]))
         all_game_objects.append(particle)
 
-
-enemy = EnemyGameObject(all_game_objects)
-enemy.position = Vector2(500, 50)
-enemy.velocity = Vector2(200, 0)
-enemy.fire_interval = 0.3
-enemy.firing_speed = 900.0
-enemy.boundingBox = Rect(enemy.position.to_tuple(), (10, 10))
-enemy.color = (255, 100, 0)
-enemy.target = player
-enemy_dir = 0.0
-all_game_objects.append(enemy)
+flash_effect_timer = 0
+do_flash_effect = False
 
 quit_game = False
-
 delta_time = 0.0
 last_frame_time = 0.0
 timer = pygame.time.Clock()
@@ -153,21 +208,44 @@ while not quit_game:
 
         handle_player_input(event)
 
-    control_player_motion(delta_time)
+    keys = pygame.key.get_pressed()
 
-    screen.blit(background_img, (0, 0))
+    camera.update(delta_time)
+    control_player_motion(keys, delta_time)
+
+    # Make the player shoot.
+    if pygame.mouse.get_pressed()[0] and player_firing_timer >= player_firing_interval:
+        fire_bullet()
+        player_firing_timer = 0.0
+    player_firing_timer += delta_time
+
+    # Do background rendering first.
+    screen.fill((0, 0, 0))
+    for i in range(0, len(backgrounds)):
+        screen.blit(backgrounds[i], (i*backgrounds[i].get_width()-camera.boundingBox.x, 0-camera.boundingBox.y))
+
+    if do_flash_effect:
+        flash_effect_timer += delta_time
+
+        screen.fill((255, 255, 255))
+
+        if flash_effect_timer > 0.01:
+            flash_effect_timer = 0.0
+            do_flash_effect = False
 
     # Iterate backwards - much safer solution for iteration and removal at the same time.
     for i in xrange(len(all_game_objects) - 1, -1, -1):
         game_object = all_game_objects[i]
         game_object.update(delta_time)
-        game_object.render(screen)
+        game_object.render(screen, camera)
 
         # Enemy hits player - create particles - remove bullet
         if game_object.tag == "enemy bullet":
             if game_object.boundingBox.colliderect(player.boundingBox):
-                create_particle_effect(player.position, 15, (0, 255, 150))
+                create_particle_effect(player.position, 30, (0, 255, 150))
                 del all_game_objects[i]
+                hit_sfx.play()
+                do_flash_effect = True
 
             # Destroy bullet if its life ran out.
             elif game_object.lifeTimer < 0:
@@ -178,6 +256,7 @@ while not quit_game:
             if game_object.boundingBox.colliderect(enemy.boundingBox):
                 create_particle_effect(enemy.position, 15, (255, 255, 0))
                 del all_game_objects[i]
+                hit_sfx.play()
 
             # Destroy bullet if its life ran out.
             elif game_object.lifeTimer < 0:
@@ -247,9 +326,12 @@ while not quit_game:
     # Mark the time the frame ended, so we can later calculate delta time.
     last_frame_time = start_frame_time
 
+    timer.tick(120)
+
 
 # Un-initialize pygame modules.
 pygame.quit()
+mixer.quit()
 
 # Kill the window.
 sys.exit()
